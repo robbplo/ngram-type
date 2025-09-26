@@ -28,6 +28,7 @@ var ngramTypeConfig = {
                     WPMs: [],
                     phrases: {},
                     phrasesCurrentIndex: 0,
+                    autoProgressEnabled: false,
                 },
                 trigrams: {
                     scope: 50,
@@ -38,6 +39,7 @@ var ngramTypeConfig = {
                     WPMs: [],
                     phrases: {},
                     phrasesCurrentIndex: 0,
+                    autoProgressEnabled: false,
                 },
                 tetragrams: {
                     scope: 50,
@@ -48,6 +50,7 @@ var ngramTypeConfig = {
                     WPMs: [],
                     phrases: {},
                     phrasesCurrentIndex: 0,
+                    autoProgressEnabled: false,
                 },
                 words: {
                     scope: 50,
@@ -58,6 +61,7 @@ var ngramTypeConfig = {
                     WPMs: [],
                     phrases: {},
                     phrasesCurrentIndex: 0,
+                    autoProgressEnabled: false,
                 },
                 custom_words: {
                     scope: null,
@@ -68,6 +72,7 @@ var ngramTypeConfig = {
                     WPMs: [],
                     phrases: {},
                     phrasesCurrentIndex: 0,
+                    autoProgressEnabled: false,
                 },
             },
 
@@ -201,16 +206,16 @@ var ngramTypeConfig = {
         save: function() {
             localStorage.ngramTypeAppdata = JSON.stringify(this.data);
         },
-        load: function () {
+        load: function() {
             this.data = JSON.parse(localStorage.ngramTypeAppdata);
         },
-        reset: function () {
+        reset: function() {
             localStorage.removeItem('ngramTypeAppdata');
         },
-        getSavedData: function () {
+        getSavedData: function() {
             return JSON.parse(localStorage.ngramTypeAppdata);
         },
-        updateDataVersion: function () {
+        updateDataVersion: function() {
             this.data.version = this.VERSION;
             this.save();
         },
@@ -396,7 +401,26 @@ var ngramTypeConfig = {
             }
             // Start again from beginning, but generate new data.
             else {
+                if (dataSource.autoProgressEnabled) {
+                    this.autoProgress();
+                }
                 this.refreshPhrases();
+            }
+        },
+        autoProgress: function() {
+            var dataSource = this.dataSource;
+            var maxCombination = 10;
+            var minRepetition = 1;
+            var minCombination = 3;
+
+            // First, try to increase combination
+            if (dataSource.combination < maxCombination) {
+                dataSource.combination += 1;
+            }
+            // If combination is at max, decrease repetition and reset combination
+            else if (dataSource.repetition > minRepetition) {
+                dataSource.repetition -= 1;
+                dataSource.combination = minCombination;
             }
         },
         customWordsModalShow: function() {
@@ -409,7 +433,7 @@ var ngramTypeConfig = {
             var customWordsSubmitted = $customWordsModal.find('textarea').val();
 
             // Convert to array, remove the empty string.
-            var customWordsProccessed = customWordsSubmitted.split(/\s+/).filter(function(element) {return element});
+            var customWordsProccessed = customWordsSubmitted.split(/\s+/).filter(function(element) { return element });
 
             $customWordsModal.modal("hide");
             this.custom_words = customWordsProccessed;

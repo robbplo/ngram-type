@@ -264,6 +264,25 @@
                         type="number" min="1" max="100" v-on:change="save">
                 </div>
             </fieldset>
+            <fieldset class="settings-module col-xl-2 col-lg-2 col-md-3 col-sm-4 col-xs-12">
+                <legend>Auto Progress</legend>
+                <div class="form-group">
+                    <label class="col-form-label col-form-label-sm"> &nbsp; </label>
+                    <div class="custom-control custom-switch">
+                        <input
+                            type="checkbox"
+                            class="custom-control-input"
+                            :id="'auto-progress-' + data.source"
+                            v-model="data[data['source']].autoProgressEnabled"
+                            v-on:change="save"
+                        >
+                        <label class="custom-control-label" :for="'auto-progress-' + data.source">Enable</label>
+                    </div>
+                    <small class="form-text text-muted">
+                        Automatically increases combination and decreases repetition when exercises are completed
+                    </small>
+                </div>
+            </fieldset>
         </div>
 
         <!-- Modal for the custom texts. -->
