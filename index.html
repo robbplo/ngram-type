@@ -27,6 +27,11 @@
     <!-- https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css -->
     <link rel="stylesheet" href="./assets/css/font-awesome-4.7.0.min.css">
 
+    <!-- Google Fonts - Roboto Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" type="text/css" href="./app.css">
 
     <!-- Ngrams Sources. -->
@@ -339,16 +344,9 @@
                     Click the "Custom" link to input words.
                 </h4>
             </div>
-            <div class="expected-phrase word text-white bg-primary mb-3">
-                {{ expectedPhrase }}
-            </div>
-            <div class="form-group input-fields">
-                <label class="col-form-label col-form-label-lg"></label>
-                <input v-model="typedPhrase"
-                    :class="{'form-control': true, 'form-control-lg': true, 'incorrect-input': !isInputCorrect}"
-                    id="input-typing" type="text" autocorrect="off" autocapitalize="none"
-                    placeholder="Re-type if failed, press <TAB> or <ESC> to reset" spellcheck="false"
-                    v-on:keyup="keyHandler">
+            <div class="typing-area" id="typing-area" tabindex="0">
+                <div class="text-display" v-html="renderedText"></div>
+                <div class="caret" :style="caretStyle" v-show="showCaret"></div>
             </div>
         </div>
         <!--Lesson end-->

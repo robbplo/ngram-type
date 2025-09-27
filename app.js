@@ -79,12 +79,17 @@ var ngramTypeConfig = {
             phrases: [],
             expectedPhrase: '',
             typedPhrase: '',
+            typedCharacters: [],
+            currentCharIndex: 0,
             startTime: '',
             hitsCorrect: 0,
             hitsWrong: 0,
             isInputCorrect: true,
             rawWPM: 0,
             accuracy: 0,
+            showCaret: true,
+            caretLeft: 0,
+            caretTop: 0,
         }
     },
     computed: {
@@ -105,6 +110,50 @@ var ngramTypeConfig = {
             var sum = dataSource.WPMs.reduce(function(a, b) { return (a + b) }, 0);
             var average = sum / dataSource.WPMs.length;
             return Math.round(average);
+        },
+        renderedText: function() {
+            if (!this.expectedPhrase) {
+                return '';
+            }
+
+            var html = '';
+            var expectedChars = this.expectedPhrase.split('');
+
+            for (var i = 0; i < expectedChars.length; i++) {
+                var char = expectedChars[i];
+                var classes = ['char'];
+
+                if (i < this.currentCharIndex) {
+                    if (this.typedCharacters[i] === char) {
+                        classes.push('correct');
+                    } else {
+                        classes.push('incorrect');
+                    }
+                } else if (i === this.currentCharIndex) {
+                    classes.push('current');
+                    classes.push('untyped');
+                } else {
+                    classes.push('untyped');
+                }
+
+                var displayChar = char === ' ' ? '&nbsp;' : char;
+                html += '<span class="' + classes.join(' ') + '" data-index="' + i + '">' + displayChar + '</span>';
+            }
+
+            return html;
+        },
+        caretStyle: function() {
+            if (!this.expectedPhrase || this.currentCharIndex >= this.expectedPhrase.length) {
+                return { display: 'none' };
+            }
+
+            const { left, top } = this.getCaretPosition();
+
+            return {
+                left: left + 'px',
+                top: top + 'px',
+                display: 'block'
+            };
         },
     },
     mounted: function() {
@@ -134,13 +183,41 @@ var ngramTypeConfig = {
             this.updateDataVersion()
         }
 
-        // Use jQuery instead of Vue for intercepting the <Tab>/<Esc> key.
+        // Add global keyboard listener for inline typing
         var that = this;
-        $('#input-typing').on('keydown', function(e) {
+        $(document).on('keydown', function(e) {
             var key = e.originalEvent.code;
             if (key == 'Tab' || key == 'Escape') {
                 e.preventDefault();
                 that.resetCurrentPhraseMetrics();
+                return;
+            }
+        });
+
+        $(document).on('keypress', function(e) {
+            // Don't capture input if user is typing in input fields, textareas, or other form elements
+            if ($(e.target).is('input, textarea, select') || e.target.contentEditable === 'true') {
+                return;
+            }
+
+            if (e.which === 0 || e.ctrlKey || e.metaKey || e.altKey) {
+                return;
+            }
+
+            var char = String.fromCharCode(e.which);
+            that.handleCharacterInput(char);
+            e.preventDefault();
+        });
+
+        $(document).on('keydown', function(e) {
+            // Don't capture input if user is typing in input fields, textareas, or other form elements
+            if ($(e.target).is('input, textarea, select') || e.target.contentEditable === 'true') {
+                return;
+            }
+
+            if (e.originalEvent.code === 'Backspace') {
+                that.handleBackspace();
+                e.preventDefault();
             }
         });
 
@@ -149,6 +226,9 @@ var ngramTypeConfig = {
         this.incorrectPhraseSound = new Audio('./media/sounds/failed.mp3');
         this.correctPhraseSound = new Audio('./media/sounds/ding.wav');
         this.currentPlayingSound = null;
+
+        // Focus the typing area to capture keyboard events
+        $('#typing-area').focus();
     },
     watch: {
         'data.source': function() {
@@ -181,22 +261,6 @@ var ngramTypeConfig = {
         },
         custom_words: function() {
             this.refreshPhrasesAndCurrentMetrics();
-        },
-        typedPhrase: function() {
-            // Make sure to reset any error color when moving to next lesson,
-            // lesson being reset, all chars being deleted, etc.
-            if (!this.typedPhrase.length) {
-                this.resetCurrentPhraseMetrics();
-            }
-
-            // Remove the spaces at start of the typed phrase
-            // since the user might have a typing break
-            // but have a habit of typing the spacebar before pausing the session.
-            var typedPhrase = this.typedPhrase.trimStart();
-
-            if (typedPhrase.length == 1) {
-                this.startTime = new Date().getTime() / 1000;
-            }
         },
         WPMs: function() {
             return this.averageWPM;
@@ -307,87 +371,111 @@ var ngramTypeConfig = {
                 $('.timer').countimer('resume');
             }
         },
-        keyHandler: function(e) {
-            var key = e.key;
+        getCaretPosition: function() {
+            var charElements = $('.text-display .char');
+            const leftOffset = 8;
+            const topOffset = 14;
 
-            // For other miscellaneous keys.
-            if (key.length > 1) {
+            var prevChar = charElements[this.currentCharIndex - 1];
+            if (prevChar) {
+                var $prevChar = $(prevChar);
+                var prevPosition = $prevChar.position();
+                return {
+                    left: prevPosition.left + $prevChar.outerWidth() + leftOffset,
+                    top: prevPosition.top + topOffset
+                };
+            }
+
+            return { left: leftOffset, top: topOffset };
+        },
+        handleCharacterInput: function(char) {
+            if (this.currentCharIndex >= this.expectedPhrase.length) {
                 return;
             }
 
-            // Remove spaces at starting of the phrase
-            var typedPhrase = this.typedPhrase.trimStart();
-            if (!typedPhrase.length) {
-                return;
+            if (this.currentCharIndex === 0) {
+                this.startTime = new Date().getTime() / 1000;
+                this.resumeTimer();
             }
 
-            this.resumeTimer();
+            var expectedChar = this.expectedPhrase[this.currentCharIndex];
+            this.typedCharacters[this.currentCharIndex] = char;
 
-            if (this.expectedPhrase.startsWith(typedPhrase)) {
+            if (char === expectedChar) {
                 if (this.data.soundCorrectLetterEnabled) {
                     this.stopCurrentPlayingSound();
                     this.correctLetterSound.play();
                     this.currentPlayingSound = this.correctLetterSound;
                 }
-                this.isInputCorrect = true;
                 this.hitsCorrect += 1;
-            }
-            else if (this.expectedPhrase !== typedPhrase.trimEnd()) {
+            } else {
                 if (this.data.soundIncorrectLetterEnabled) {
                     this.stopCurrentPlayingSound();
                     this.incorrectLetterSound.play();
                     this.currentPlayingSound = this.incorrectLetterSound;
                 }
-                this.isInputCorrect = false;
                 this.hitsWrong += 1;
             }
 
-            if (typedPhrase.trimEnd() === this.expectedPhrase) {
-                var currentTime = new Date().getTime() / 1000;
-                this.rawWPM = Math.round(
-                    // 5 chars equals 1 word.
-                    ((this.hitsCorrect + this.hitsWrong) / 5) / (currentTime - this.startTime) * 60
-                );
+            this.currentCharIndex += 1;
 
-                this.accuracy = Math.round(
-                    this.hitsCorrect / (this.hitsCorrect + this.hitsWrong) * 100
-                );
-
-                var dataSource = this.dataSource;
-                if (
-                    this.rawWPM < dataSource.minimumWPM
-                    || this.accuracy < dataSource.minimumAccuracy
-                ) {
-                    if (this.data.soundFailedThresholdEnabled) {
-                        this.stopCurrentPlayingSound();
-                        this.incorrectPhraseSound.play();
-                        this.currentPlayingSound = this.incorrectPhraseSound;
-                    }
-                    this.resetCurrentPhraseMetrics();
-                    this.pauseTimer()
-                    return;
-                }
-
-                // Reset WPMs when starting a new round in the same lesson.
-                var newRoundStarted = (dataSource.phrasesCurrentIndex == 0);
-                if (newRoundStarted) {
-                    dataSource.WPMs = [];
-                }
-                dataSource.WPMs.push(this.rawWPM);
-
-                if (this.data.soundPassedThresholdEnabled) {
-                    this.stopCurrentPlayingSound();
-                    this.correctPhraseSound.play();
-                    this.currentPlayingSound = this.correctPhraseSound;
-                }
-                this.pauseTimer()
-                this.nextPhrase();
+            if (this.currentCharIndex >= this.expectedPhrase.length) {
+                this.checkPhraseCompletion();
             }
+        },
+        handleBackspace: function() {
+            if (this.currentCharIndex > 0) {
+                this.currentCharIndex -= 1;
+                this.typedCharacters.splice(this.currentCharIndex, 1);
+            }
+        },
+        checkPhraseCompletion: function() {
+            var currentTime = new Date().getTime() / 1000;
+            this.rawWPM = Math.round(
+                ((this.hitsCorrect + this.hitsWrong) / 5) / (currentTime - this.startTime) * 60
+            );
+
+            this.accuracy = Math.round(
+                this.hitsCorrect / (this.hitsCorrect + this.hitsWrong) * 100
+            );
+
+            var dataSource = this.dataSource;
+            if (
+                this.rawWPM < dataSource.minimumWPM
+                || this.accuracy < dataSource.minimumAccuracy
+            ) {
+                if (this.data.soundFailedThresholdEnabled) {
+                    this.stopCurrentPlayingSound();
+                    this.incorrectPhraseSound.play();
+                    this.currentPlayingSound = this.incorrectPhraseSound;
+                }
+                this.resetCurrentPhraseMetrics();
+                this.pauseTimer()
+                return;
+            }
+
+            var newRoundStarted = (dataSource.phrasesCurrentIndex == 0);
+            if (newRoundStarted) {
+                dataSource.WPMs = [];
+            }
+            dataSource.WPMs.push(this.rawWPM);
+
+            if (this.data.soundPassedThresholdEnabled) {
+                this.stopCurrentPlayingSound();
+                this.correctPhraseSound.play();
+                this.currentPlayingSound = this.correctPhraseSound;
+            }
+            this.pauseTimer()
+            this.nextPhrase();
         },
         resetCurrentPhraseMetrics: function() {
             this.hitsCorrect = 0;
             this.hitsWrong = 0;
             this.typedPhrase = '';
+            this.typedCharacters = [];
+            this.currentCharIndex = 0;
+            this.caretLeft = 0;
+            this.caretTop = 0;
             this.isInputCorrect = true;
         },
         nextPhrase: function() {
