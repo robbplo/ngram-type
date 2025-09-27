@@ -90,6 +90,7 @@ var ngramTypeConfig = {
             showCaret: true,
             caretLeft: 0,
             caretTop: 0,
+            typingAreaFocused: false,
         }
     },
     computed: {
@@ -153,6 +154,13 @@ var ngramTypeConfig = {
                 left: left + 'px',
                 top: top + 'px',
                 display: 'block'
+            };
+        },
+        caretClasses: function() {
+            return {
+                'caret': true,
+                'caret-blinking': !this.typingAreaFocused,
+                'caret-solid': this.typingAreaFocused
             };
         },
     },
@@ -227,8 +235,20 @@ var ngramTypeConfig = {
         this.correctPhraseSound = new Audio('./media/sounds/ding.wav');
         this.currentPlayingSound = null;
 
-        // Focus the typing area to capture keyboard events
+        // Focus the typing area to capture keyboard events and add focus tracking
         $('#typing-area').focus();
+
+        // Track focus state for caret blinking
+        $('#typing-area').on('focus', function() {
+            that.typingAreaFocused = true;
+        });
+
+        $('#typing-area').on('blur', function() {
+            that.typingAreaFocused = false;
+        });
+
+        // Set initial focus state
+        this.typingAreaFocused = true;
     },
     watch: {
         'data.source': function() {
