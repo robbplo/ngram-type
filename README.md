@@ -1,5 +1,13 @@
 # Ngram Type
 
+# Fork notes
+
+This fork adds some additional features and fixes some of my own pet peeves about the original
+implementation. Here is a summary of changes i've made:
+
+- Added auto progress setting based on [Effective Practice](#effective-practice)
+
+Try out my version at https://robbplo.github.io/ngram-type
 
 ## About
 
