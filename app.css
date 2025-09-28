@@ -140,7 +140,7 @@ h4 {
     margin-bottom: 20px;
     outline: none;
     line-height: 1.4;
-    cursor: text;
+    cursor: default;
     user-select: none;
     -webkit-user-select: none;
     -moz-user-select: none;

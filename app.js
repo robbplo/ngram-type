@@ -196,8 +196,11 @@ var ngramTypeConfig = {
         $(document).on('keydown', function(e) {
             var key = e.originalEvent.code;
             if (key == 'Tab' || key == 'Escape') {
-                e.preventDefault();
-                that.resetCurrentPhraseMetrics();
+                // Only reset when typing area is focused
+                if (that.typingAreaFocused) {
+                    e.preventDefault();
+                    that.resetCurrentPhraseMetrics();
+                }
                 return;
             }
         });
@@ -205,6 +208,11 @@ var ngramTypeConfig = {
         $(document).on('keypress', function(e) {
             // Don't capture input if user is typing in input fields, textareas, or other form elements
             if ($(e.target).is('input, textarea, select') || e.target.contentEditable === 'true') {
+                return;
+            }
+
+            // Only process keystrokes when typing area is focused
+            if (!that.typingAreaFocused) {
                 return;
             }
 
@@ -220,6 +228,11 @@ var ngramTypeConfig = {
         $(document).on('keydown', function(e) {
             // Don't capture input if user is typing in input fields, textareas, or other form elements
             if ($(e.target).is('input, textarea, select') || e.target.contentEditable === 'true') {
+                return;
+            }
+
+            // Only process keystrokes when typing area is focused
+            if (!that.typingAreaFocused) {
                 return;
             }
 
