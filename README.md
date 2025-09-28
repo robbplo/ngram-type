@@ -7,7 +7,8 @@ implementation. Here is a summary of changes i've made:
 
 - Added auto progress setting based on [Effective Practice](#effective-practice)
 
-Try out my version at https://robbplo.github.io/ngram-type
+Try out my version at: https://robbplo.github.io/ngram-type
+And find the original repo at: https://github.com/ranelpadon/ngram-type
 
 ## About
 
